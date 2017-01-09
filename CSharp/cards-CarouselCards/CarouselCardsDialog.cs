@@ -22,6 +22,9 @@
         protected int count = 1;
         static Random rnd = new Random();
         List<string> mylist = new List<string>(new string[] { "gif1a","gif1b","gif2a","gif2b","gif3a","gif3b" });
+        List<string> mycolor = new List<string>(new string[] { "yellow","red","yellow","red","yellow","red" });
+        List<string> yellow = new List<string>(new string[] { "gif1a","gif2a","gif3a" });
+        List<string> red = new List<string>(new string[] { "gif1b","gif2b","gif3b" });
 
 
         public static string GetFileFullPath(string path)
@@ -44,7 +47,10 @@
             // Check file exist
             if (System.IO.File.Exists(filePath))
             {
-                System.IO.File.Delete(filePath);
+                System.GC.Collect();
+                System.GC.WaitForPendingFinalizers();
+                File.Delete(filePath);
+                //System.IO.File.Delete(filePath);
             }
 
             //Save file
@@ -54,12 +60,12 @@
                 str.Write(content,0,content.Length);
             }
         }
-        public static void GhepHinhTuGif(string gifId,string Dirpath,string ConversationId)
+        public static void GhepHinhTuGif(string gifId,string color,string Dirpath,string ConversationId)
         {
             var Width = 500;
             var Height = 416;
             var hinhNoResize = System.Drawing.Bitmap.FromFile(Path.Combine(Dirpath,ConversationId+"_"+".jpg"));
-            var hinh = FixedSize(hinhNoResize,Width,Height);
+            var hinh = FixedSize(hinhNoResize,Width,Height,color);
 
             for (var i = 0;i<4;i++)
             {
@@ -109,7 +115,7 @@
             GEncoder.Finish();
         }
 
-        static Image FixedSize(Image imgPhoto,int Width,int Height)
+        static Image FixedSize(Image imgPhoto,int Width,int Height,string color)
         {
             int sourceWidth = imgPhoto.Width;
             int sourceHeight = imgPhoto.Height;
@@ -117,7 +123,11 @@
             int sourceY = 0;
             int destX = 0;
             int destY = 0;
-
+            var colorbg = Color.Red;
+            if (color =="yellow")
+            {
+                colorbg =Color.FromArgb(255,199,0);
+            }
             float nPercent = 0;
             float nPercentW = 0;
             float nPercentH = 0;
@@ -146,7 +156,8 @@
                              imgPhoto.VerticalResolution);
 
             Graphics grPhoto = Graphics.FromImage(bmPhoto);
-            grPhoto.Clear(Color.Red);
+            grPhoto.Clear(colorbg);
+            
             grPhoto.InterpolationMode=
                     InterpolationMode.HighQualityBicubic;
 
@@ -203,7 +214,7 @@
                     var attachmentData = await httpClient.GetByteArrayAsync(attachmentUrl);
                     SaveFile(attachmentData,filepath);
                     int r = rnd.Next(mylist.Count);
-                    GhepHinhTuGif((string)mylist[r],Dirpath,ConversationId);
+                    GhepHinhTuGif((string)mylist[r],(string)mycolor[r],Dirpath,ConversationId);
                     Create_Animated_GIF(ConversationId);
 
                     var replyMessage = context.MakeMessage();
@@ -236,10 +247,14 @@
             {
 
                 var callbackmsg = message.Text;
-
+                var color = "red";
                 if (mylist.Contains(callbackmsg))
                 {
-                    GhepHinhTuGif(callbackmsg,Dirpath,ConversationId);
+                    if (yellow.Contains(callbackmsg))
+                    {
+                        color="yellow";
+                    }
+                    GhepHinhTuGif(callbackmsg,color,Dirpath,ConversationId);
                     Create_Animated_GIF(ConversationId);
 
                     var replyMessage = context.MakeMessage();
@@ -283,7 +298,7 @@
                             string data = JObject.Parse(retVal)["profile_pic"].ToString();
                             getUrlImage(data,filepath);
                             int r = rnd.Next(mylist.Count);
-                            GhepHinhTuGif((string)mylist[r],Dirpath,ConversationId);
+                            GhepHinhTuGif((string)mylist[r],(string)mycolor[r],Dirpath,ConversationId);
                             // GhepHinhTuGif("gif1a",Dirpath,ConversationId);
                             Create_Animated_GIF(ConversationId);
                         }
