@@ -12,7 +12,7 @@
     {
         private const string FlightsOption = "Flights";
 
-        private const string HotelsOption = "Hotels";
+        private const string HotelsOption = "Xua co chu tho chup anh";
 
         public async Task StartAsync(IDialogContext context)
         {
@@ -35,7 +35,7 @@
 
         private void ShowOptions(IDialogContext context)
         {
-            PromptDialog.Choice(context, this.OnOptionSelected, new List<string>() { FlightsOption, HotelsOption }, "Are you looking for a flight or a hotel?", "Not a valid option", 3);
+            PromptDialog.Choice(context, this.OnOptionSelected, new List<string>() { FlightsOption, HotelsOption,HotelsOption ,HotelsOption ,HotelsOption, HotelsOption ,HotelsOption ,}, "Are you looking for a flight or a hotel?", "Not a valid option", 3,PromptStyle.PerLine);
         }
 
         private async Task OnOptionSelected(IDialogContext context, IAwaitable<string> result)

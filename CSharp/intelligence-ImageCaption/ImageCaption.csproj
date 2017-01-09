@@ -139,7 +139,9 @@
     <Content Include="packages.config" />
     <Content Include="README.md" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <None Include="Properties\PublishProfiles\captionImage.pubxml" />
+  </ItemGroup>
   <ItemGroup>
     <Content Include="azuredeploy.json" />
   </ItemGroup>

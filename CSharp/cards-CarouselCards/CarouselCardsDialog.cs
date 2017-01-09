@@ -5,25 +5,330 @@
     using System.Threading.Tasks;
     using Microsoft.Bot.Builder.Dialogs;
     using Microsoft.Bot.Connector;
-
+    using System.Net.Http;
+    using System.Linq;
+    using System.IO;
+    using System.Drawing;
+    using System.Web;
+    using System.Web.Hosting;
+    using Gif.Components;
+    using System.Drawing.Imaging;
+    using System.Drawing.Drawing2D;
+    using System.Net;
+    using Newtonsoft.Json.Linq;
     [Serializable]
-    public class CarouselCardsDialog : IDialog<object>
+    public class CarouselCardsDialog:IDialog<object>
     {
+        protected int count = 1;
+        static Random rnd = new Random();
+        List<string> mylist = new List<string>(new string[] { "gif1a","gif1b","gif2a","gif2b","gif3a","gif3b" });
+
+
+        public static string GetFileFullPath(string path)
+        {
+            string relName = path.StartsWith("~") ? path : path.StartsWith("/") ? string.Concat("~",path) : path;
+
+            string filePath = relName.StartsWith("~") ? HostingEnvironment.MapPath(relName) : relName;
+
+            return filePath;
+        }
+
+        public static void SaveFile(byte[] content,string path)
+        {
+            string filePath = GetFileFullPath(path);
+            // Check folder exist
+            if (!Directory.Exists(Path.GetDirectoryName(filePath)))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+            }
+            // Check file exist
+            if (System.IO.File.Exists(filePath))
+            {
+                System.IO.File.Delete(filePath);
+            }
+
+            //Save file
+            //System.IO.File.Create(filePath)
+            using (FileStream str = System.IO.File.OpenWrite(filePath))
+            {
+                str.Write(content,0,content.Length);
+            }
+        }
+        public static void GhepHinhTuGif(string gifId,string Dirpath,string ConversationId)
+        {
+            var Width = 500;
+            var Height = 416;
+            var hinhNoResize = System.Drawing.Bitmap.FromFile(Path.Combine(Dirpath,ConversationId+"_"+".jpg"));
+            var hinh = FixedSize(hinhNoResize,Width,Height);
+
+            for (var i = 0;i<4;i++)
+            {
+                var border = System.Drawing.Bitmap.FromFile(Path.Combine(Path.Combine(Dirpath,gifId),i.ToString()+".png")); // your source images - assuming they're the same size
+                var target = new Bitmap(Width,Height,PixelFormat.Format32bppArgb);
+                var graphics = Graphics.FromImage(target);
+                graphics.CompositingMode=CompositingMode.SourceOver;
+                graphics.DrawImage(hinh,0,0);
+                graphics.DrawImage(border,0,0);
+                var targetName = Path.Combine(Dirpath,ConversationId+"_"+"demo"+i.ToString()+".jpg");
+                target.Save(targetName,ImageFormat.Jpeg);
+                target.Dispose();
+            }
+
+        }
+
+
+        public void Create_Animated_GIF(string ConversationId)
+        {
+            var Dirpath = Path.Combine(HttpRuntime.AppDomainAppPath,"images");
+            var Output_File_Path = Path.Combine(Dirpath,ConversationId+"_"+".gif");
+
+            AnimatedGifEncoder GEncoder = new AnimatedGifEncoder();
+
+            GEncoder.Start(Output_File_Path);
+            GEncoder.SetDelay(300);
+            GEncoder.SetRepeat(0);
+
+            for (int i = 0;i<4;i++)
+            {
+                var fileName = Path.Combine(Dirpath,ConversationId+"_"+"demo"+i.ToString()+".jpg");
+                using (var image = System.Drawing.Image.FromFile(fileName))
+                {
+                    GEncoder.AddFrame(image);
+                }
+            }
+
+            /*
+            try
+            {
+                System.IO.Directory.Delete(Environment.CurrentDirectory + "\\Temp2", true);
+            }
+            catch
+            {
+            }
+            */
+            GEncoder.Finish();
+        }
+
+        static Image FixedSize(Image imgPhoto,int Width,int Height)
+        {
+            int sourceWidth = imgPhoto.Width;
+            int sourceHeight = imgPhoto.Height;
+            int sourceX = 0;
+            int sourceY = 0;
+            int destX = 0;
+            int destY = 0;
+
+            float nPercent = 0;
+            float nPercentW = 0;
+            float nPercentH = 0;
+
+            nPercentW=((float)Width/(float)sourceWidth);
+            nPercentH=((float)Height/(float)sourceHeight);
+            if (nPercentH<nPercentW)
+            {
+                nPercent=nPercentH;
+                destX=System.Convert.ToInt16((Width-
+                              (sourceWidth*nPercent))/2);
+            }
+            else
+            {
+                nPercent=nPercentW;
+                destY=System.Convert.ToInt16((Height-
+                              (sourceHeight*nPercent))/2);
+            }
+
+            int destWidth = (int)(sourceWidth*nPercent);
+            int destHeight = (int)(sourceHeight*nPercent);
+
+            Bitmap bmPhoto = new Bitmap(Width,Height,
+                              PixelFormat.Format24bppRgb);
+            bmPhoto.SetResolution(imgPhoto.HorizontalResolution,
+                             imgPhoto.VerticalResolution);
+
+            Graphics grPhoto = Graphics.FromImage(bmPhoto);
+            grPhoto.Clear(Color.Red);
+            grPhoto.InterpolationMode=
+                    InterpolationMode.HighQualityBicubic;
+
+            grPhoto.DrawImage(imgPhoto,
+                new Rectangle(destX,destY,destWidth,destHeight),
+                new Rectangle(sourceX,sourceY,sourceWidth,sourceHeight),
+                GraphicsUnit.Pixel);
+
+            grPhoto.Dispose();
+            return bmPhoto;
+        }
+
         public async Task StartAsync(IDialogContext context)
         {
+
             context.Wait(this.MessageReceivedAsync);
         }
 
-        public virtual async Task MessageReceivedAsync(IDialogContext context, IAwaitable<IMessageActivity> result)
+        bool IsDigitsOnly(string str)
         {
-            var reply = context.MakeMessage();
+            foreach (char c in str)
+            {
+                if (c<'0'||c>'9')
+                    return false;
+            }
 
-            reply.AttachmentLayout = AttachmentLayoutTypes.Carousel;
-            reply.Attachments = GetCardsAttachments();
+            return true;
+        }
 
-            await context.PostAsync(reply);
+
+        public virtual async Task MessageReceivedAsync(IDialogContext context,IAwaitable<IMessageActivity> argument)
+        {
+            count++;
+            var message = await argument;
+            var ConversationId = message.Conversation.Id;
+            var userId = message.From.Id;
+            if (!IsDigitsOnly(userId))
+            {
+                userId="1158620034245302";
+            }
+            var Dirpath = Path.Combine(HttpRuntime.AppDomainAppPath,"images");
+            var filepath = Path.Combine(Dirpath,ConversationId+"_"+".jpg");
+            var Output_File_Path = Path.Combine(Dirpath,ConversationId+"_"+".gif");
+            var realServer = "http://ttcl.eduu.vn/images";
+            //var realServer = Dirpath;
+            if (message.Attachments!=null&&message.Attachments.Any())
+            {
+
+                var attachment = message.Attachments.First();
+
+                using (HttpClient httpClient = new HttpClient())
+                {
+                    var attachmentUrl = message.Attachments[0].ContentUrl;
+                    var attachmentData = await httpClient.GetByteArrayAsync(attachmentUrl);
+                    SaveFile(attachmentData,filepath);
+                    int r = rnd.Next(mylist.Count);
+                    GhepHinhTuGif((string)mylist[r],Dirpath,ConversationId);
+                    Create_Animated_GIF(ConversationId);
+
+                    var replyMessage = context.MakeMessage();
+                    replyMessage.Attachments=new List<Attachment>()
+                     {
+                        new Attachment()
+                        {
+                            ContentUrl = realServer + "/" + ConversationId+"_"+  ".gif",
+                            ContentType = "image/gif",
+                            Name = ConversationId+"_"+ ".gif"
+                        }
+                     };
+                    await context.PostAsync(replyMessage);
+
+                    if (count>=3)
+                    {
+                        await context.PostAsync($"Tết mà, hình phải đẹp nha. Chọn chủ đề bên dưới để Kinh Đô tặng bạn bức hình đẹp nhất nhé.");
+                        var replychon = context.MakeMessage();
+
+                        replychon.AttachmentLayout=AttachmentLayoutTypes.Carousel;
+                        replychon.Attachments=GetCardsAttachments();
+
+                        await context.PostAsync(replychon);
+
+
+                    }
+                }
+            }
+            else
+            {
+
+                var callbackmsg = message.Text;
+
+                if (mylist.Contains(callbackmsg))
+                {
+                    GhepHinhTuGif(callbackmsg,Dirpath,ConversationId);
+                    Create_Animated_GIF(ConversationId);
+
+                    var replyMessage = context.MakeMessage();
+                    replyMessage.Attachments=new List<Attachment>()
+                     {
+                        new Attachment()
+                        {
+                            ContentUrl = realServer + "/" + ConversationId+"_"+ ".gif",
+                            ContentType = "image/gif",
+                            Name = ConversationId+"_"+ ".gif"
+                        }
+                     };
+                    await context.PostAsync(replyMessage);
+                    // await context.PostAsync($"Tết mà, hình phải đẹp nha. Chọn chủ đề bên dưới để Kinh Đô tặng bạn bức hình đẹp nhất nhé.");
+                    var replychon = context.MakeMessage();
+
+                    replychon.AttachmentLayout=AttachmentLayoutTypes.Carousel;
+                    replychon.Attachments=GetCardsAttachments();
+
+                    await context.PostAsync(replychon);
+                }
+                else {
+                    if ((count>3)&&(callbackmsg!="facebook"))
+                    {
+                        await context.PostAsync($"Chúc bạn xuân Bính Dậu vạn sự như ý, tỉ sự như mơ. Nào gửi một tấm ảnh của bạn và gia đình để nhận lại bất ngờ 'Tết mà của bạn' từ Kinh Đô!");
+
+                    }
+                    else
+                    {
+
+                        var fbimgURLObj = "https://graph.facebook.com/v2.6/"+userId+"?access_token=EAAKAzAhrnAkBAGJW5IcrCfRZBxPk2S54ZAby5ZCa4cCFPnXalAZBfzEXmTgsEYvO9vNBqKwdYW04PqSOZCTQ4yLpUFcFpsBWTtLBjxp5XOiLjn3MgMSC1dQwJU5saUsNUVUXzM64dAFGUTGMbDaZBnQj8JZCOnPYH1wuet4Chaz1AZDZD";
+
+                        HttpWebRequest request = WebRequest.Create(fbimgURLObj) as HttpWebRequest;
+                        using (HttpWebResponse response = request.GetResponse() as HttpWebResponse)
+                        {
+
+                            StreamReader reader = new StreamReader(response.GetResponseStream());
+
+                            string retVal = reader.ReadToEnd();
+
+                            string data = JObject.Parse(retVal)["profile_pic"].ToString();
+                            getUrlImage(data,filepath);
+                            int r = rnd.Next(mylist.Count);
+                            GhepHinhTuGif((string)mylist[r],Dirpath,ConversationId);
+                            // GhepHinhTuGif("gif1a",Dirpath,ConversationId);
+                            Create_Animated_GIF(ConversationId);
+                        }
+                        var replyMessage = context.MakeMessage();
+                        replyMessage.Attachments=new List<Attachment>()
+                     {
+                        new Attachment()
+                        {
+                            ContentUrl = realServer + "/" + ConversationId+"_"+ ".gif",
+                            ContentType = "image/gif",
+                            Name = ConversationId+"_"+ ".gif"
+                        }
+                     };
+                        await context.PostAsync(replyMessage);
+                        await context.PostAsync($"Chúc bạn xuân Bính Dậu vạn sự như ý, tỉ sự như mơ. Nào gửi một tấm ảnh của bạn và gia đình để nhận lại bất ngờ 'Tết mà của bạn' từ Kinh Đô!");
+                    }
+                }
+            }
 
             context.Wait(this.MessageReceivedAsync);
+
+        }
+
+        public static void getUrlImage(string url,string filepath)
+        {
+            WebResponse result = null;
+            try
+            {
+                WebRequest request = WebRequest.Create(url);
+                result=request.GetResponse();
+                Stream stream = result.GetResponseStream();
+                BinaryReader br = new BinaryReader(stream);
+                byte[] rBytes = br.ReadBytes(1000000);
+                br.Close();
+                result.Close();
+                SaveFile(rBytes,filepath);
+            }
+            catch (Exception c)
+            {
+                //MessageBox.Show(c.Message);
+            }
+            finally
+            {
+                if (result!=null) result.Close();
+            }
         }
 
         private static IList<Attachment> GetCardsAttachments()
@@ -31,58 +336,44 @@
             return new List<Attachment>()
             {
                 GetHeroCard(
-                    "Azure Storage",
-                    "Massively scalable cloud storage for your applications",
-                    "Store and help protect your data. Get durable, highly available data storage across the globe and pay only for what you use.",
-                    new CardImage(url: "https://acom.azurecomcdn.net/80C57D/cdn/mediahandler/docarticles/dpsmedia-prod/azure.microsoft.com/en-us/documentation/articles/storage-introduction/20160801042915/storage-concepts.png"),
-                    new CardAction(ActionTypes.OpenUrl, "Learn more", value: "https://azure.microsoft.com/en-us/services/storage/")),
-                GetThumbnailCard(
-                    "DocumentDB",
-                    "Blazing fast, planet-scale NoSQL",
-                    "NoSQL service for highly available, globally distributed apps—take full advantage of SQL and JavaScript over document and key-value data without the hassles of on-premises or virtual machine-based cloud database options.",
-                    new CardImage(url: "https://sec.ch9.ms/ch9/29f4/beb4b953-ab91-4a31-b16a-71fb6d6829f4/WhatisAzureDocumentDB_960.jpg"),
-                    new CardAction(ActionTypes.OpenUrl, "Learn more", value: "https://azure.microsoft.com/en-us/services/documentdb/")),
+                    "Xưa, Tết có chú thợ ảnh",
+                    new CardImage(url: "http://ttcl.eduu.vn/1a.jpg"),
+                    new CardAction(ActionTypes.PostBack, "Chọn chủ đề này", value: "gif1a")),
                 GetHeroCard(
-                    "Azure Functions",
-                    "Process events with serverless code",
-                    "Azure Functions is a serverless event driven experience that extends the existing Azure App Service platform. These nano-services can scale based on demand and you pay only for the resources you consume.",
-                    new CardImage(url: "https://azurecomcdn.azureedge.net/cvt-8636d9bb8d979834d655a5d39d1b4e86b12956a2bcfdb8beb04730b6daac1b86/images/page/services/functions/azure-functions-screenshot.png"),
-                    new CardAction(ActionTypes.OpenUrl, "Learn more", value: "https://azure.microsoft.com/en-us/services/functions/")),
-                GetThumbnailCard(
-                    "Cognitive Services",
-                    "Build powerful intelligence into your applications to enable natural and contextual interactions",
-                    "Enable natural and contextual interaction with tools that augment users' experiences using the power of machine-based intelligence. Tap into an ever-growing collection of powerful artificial intelligence algorithms for vision, speech, language, and knowledge.",
-                    new CardImage(url: "https://azurecomcdn.azureedge.net/cvt-8636d9bb8d979834d655a5d39d1b4e86b12956a2bcfdb8beb04730b6daac1b86/images/page/services/functions/azure-functions-screenshot.png"),
-                    new CardAction(ActionTypes.OpenUrl, "Learn more", value: "https://azure.microsoft.com/en-us/services/functions/")),
+                    "Nay, Tết có 'dế' xì-mát-phôn",
+                    new CardImage(url: "http://ttcl.eduu.vn/1b.jpg"),
+                    new CardAction(ActionTypes.PostBack, "Chọn chủ đề này", value: "gif1b")),
+                GetHeroCard(
+                    "Xưa, Tết du xuân trẩy hội",
+                    new CardImage(url: "http://ttcl.eduu.vn/2a.jpg"),
+                    new CardAction(ActionTypes.PostBack, "Chọn chủ đề này", value: "gif2a")),
+                GetHeroCard(
+                    "Nay, Tết rộn chốn thành đô",
+                    new CardImage(url: "http://ttcl.eduu.vn/2b.jpg"),
+                    new CardAction(ActionTypes.PostBack, "Chọn chủ đề này", value: "gif2b")),
+                GetHeroCard(
+                    "Xưa, pháo lân mừng Tết",
+                    new CardImage(url: "http://ttcl.eduu.vn/3a.jpg"),
+                    new CardAction(ActionTypes.PostBack, "Chọn chủ đề này", value: "gif3a")),
+                GetHeroCard(
+                    "Nay, pháo hoa rợp trời xuân",
+                    new CardImage(url: "http://ttcl.eduu.vn/3b.jpg"),
+                    new CardAction(ActionTypes.PostBack, "Chọn chủ đề này", value: "gif3b")),
             };
         }
 
-        private static Attachment GetHeroCard(string title, string subtitle, string text, CardImage cardImage, CardAction cardAction)
+        private static Attachment GetHeroCard(string title,CardImage cardImage,CardAction cardAction)
         {
             var heroCard = new HeroCard
             {
-                Title = title,
-                Subtitle = subtitle,
-                Text = text,
-                Images = new List<CardImage>() { cardImage },
-                Buttons = new List<CardAction>() { cardAction },
+                Title=title,
+                //Images=new List<CardImage>() { cardImage },
+                Buttons=new List<CardAction>() { cardAction },
+                //Tap=new CardAction { Type=cardAction.Type,Value=cardAction.Value },
             };
 
             return heroCard.ToAttachment();
         }
 
-        private static Attachment GetThumbnailCard(string title, string subtitle, string text, CardImage cardImage, CardAction cardAction)
-        {
-            var heroCard = new ThumbnailCard
-            {
-                Title = title,
-                Subtitle = subtitle,
-                Text = text,
-                Images = new List<CardImage>() { cardImage },
-                Buttons = new List<CardAction>() { cardAction },
-            };
-
-            return heroCard.ToAttachment();
-        }
     }
 }

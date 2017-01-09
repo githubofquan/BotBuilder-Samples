@@ -6,7 +6,8 @@
     using System.Web.Http;
     using Microsoft.Bot.Builder.Dialogs;
     using Microsoft.Bot.Connector;
-
+    using System.IO;
+    using System.Web.Hosting;
     [BotAuthentication]
     public class MessagesController : ApiController
     {
@@ -28,6 +29,8 @@
             var response = Request.CreateResponse(HttpStatusCode.OK);
             return response;
         }
+
+       
 
         private Activity HandleSystemMessage(Activity message)
         {
