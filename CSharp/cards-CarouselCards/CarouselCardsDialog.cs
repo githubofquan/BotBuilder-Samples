@@ -21,6 +21,7 @@
     {
         int count54 = 0;
         int demhinh = 0;
+        byte[] attachmentData = new byte[] { 0x20,0x20,0x20,0x20,0x20,0x20,0x20 };
         static Random rnd = new Random();
         List<string> mylist = new List<string>(new string[] { "gif1a","gif1b","gif2a","gif2b","gif3a","gif3b" });
         List<string> mycolor = new List<string>(new string[] { "yellow","red","yellow","red","yellow","red" });
@@ -68,25 +69,71 @@
                 str.Write(content,0,content.Length);
             }
         }
-        public static void GhepHinhTuGif(string gifId,string color,string Dirpath,string ConversationId,int demhinh)
+
+        public static Image byteArrayToImage(byte[] byteArrayIn)
+        {
+            MemoryStream ms = new MemoryStream(byteArrayIn);
+            Image returnImage = Image.FromStream(ms);
+            return returnImage;
+        }
+        public static void GhepHinhTuGif(string gifId,string color,string Dirpath,string ConversationId,int demhinh,byte[] attachmentData)
         {
             var Width = 500;
             var Height = 416;
-            var hinhNoResize = System.Drawing.Bitmap.FromFile(Path.Combine(Dirpath,ConversationId+"_"+demhinh.ToString()+".jpg"));
+            //var hinhNoResize = System.Drawing.Bitmap.FromFile(Path.Combine(Dirpath,ConversationId+"_"+demhinh.ToString()+".jpg"));
+            var hinhNoResize = byteArrayToImage(attachmentData);
             var hinh = FixedSize(hinhNoResize,Width,Height,color);
 
-            for (var i = 0;i<4;i++)
-            {
-                var border = System.Drawing.Bitmap.FromFile(Path.Combine(Path.Combine(Dirpath,gifId),i.ToString()+".png")); // your source images - assuming they're the same size
-                var target = new Bitmap(Width,Height,PixelFormat.Format32bppArgb);
-                var graphics = Graphics.FromImage(target);
-                graphics.CompositingMode=CompositingMode.SourceOver;
-                graphics.DrawImage(hinh,0,0);
-                graphics.DrawImage(border,0,0);
-                var targetName = Path.Combine(Dirpath,ConversationId+"_"+demhinh.ToString()+"demo"+i.ToString()+".jpg");
-                target.Save(targetName,ImageFormat.Jpeg);
-                target.Dispose();
-            }
+            //for (var i = 0;i<4;i++)
+            //{
+                var border1 = System.Drawing.Bitmap.FromFile(Path.Combine(Path.Combine(Dirpath,gifId),0.ToString()+".png")); // your source images - assuming they're the same size
+                var target1 = new Bitmap(Width,Height,PixelFormat.Format32bppArgb);
+                var graphics1 = Graphics.FromImage(target1);
+                graphics1.CompositingMode=CompositingMode.SourceOver;
+                graphics1.DrawImage(hinh,0,0);
+                graphics1.DrawImage(border1,0,0);
+                var targetName1 = Path.Combine(Dirpath,ConversationId+"_"+demhinh.ToString()+"demo"+1.ToString()+".jpg");
+
+            var border2 = System.Drawing.Bitmap.FromFile(Path.Combine(Path.Combine(Dirpath,gifId),1.ToString()+".png")); // your source images - assuming they're the same size
+            var target2 = new Bitmap(Width,Height,PixelFormat.Format32bppArgb);
+            var graphics2 = Graphics.FromImage(target2);
+            graphics2.CompositingMode=CompositingMode.SourceOver;
+            graphics2.DrawImage(hinh,0,0);
+            graphics2.DrawImage(border2,0,0);
+            var targetName2 = Path.Combine(Dirpath,ConversationId+"_"+demhinh.ToString()+"demo"+2.ToString()+".jpg");
+
+            var border3 = System.Drawing.Bitmap.FromFile(Path.Combine(Path.Combine(Dirpath,gifId),2.ToString()+".png")); // your source images - assuming they're the same size
+            var target3 = new Bitmap(Width,Height,PixelFormat.Format32bppArgb);
+            var graphics3 = Graphics.FromImage(target3);
+            graphics3.CompositingMode=CompositingMode.SourceOver;
+            graphics3.DrawImage(hinh,0,0);
+            graphics3.DrawImage(border3,0,0);
+            var targetName3 = Path.Combine(Dirpath,ConversationId+"_"+demhinh.ToString()+"demo"+3.ToString()+".jpg");
+
+            var border4 = System.Drawing.Bitmap.FromFile(Path.Combine(Path.Combine(Dirpath,gifId),3.ToString()+".png")); // your source images - assuming they're the same size
+            var target4 = new Bitmap(Width,Height,PixelFormat.Format32bppArgb);
+            var graphics4 = Graphics.FromImage(target4);
+            graphics4.CompositingMode=CompositingMode.SourceOver;
+            graphics4.DrawImage(hinh,0,0);
+            graphics4.DrawImage(border4,0,0);
+            var targetName4 = Path.Combine(Dirpath,ConversationId+"_"+demhinh.ToString()+"demo"+4.ToString()+".jpg");
+            // target.Save(targetName,ImageFormat.Jpeg);
+            //target.Dispose();
+            //}
+            
+            var Output_File_Path = Path.Combine(Dirpath,ConversationId+"_"+demhinh.ToString()+".gif");
+
+            AnimatedGifEncoder GEncoder = new AnimatedGifEncoder();
+
+            GEncoder.Start(Output_File_Path);
+            GEncoder.SetDelay(300);
+            GEncoder.SetRepeat(0);
+           
+            GEncoder.AddFrame(target1);
+            GEncoder.AddFrame(target2);
+            GEncoder.AddFrame(target3);
+            GEncoder.AddFrame(target4);
+            GEncoder.Finish();
 
         }
 
@@ -206,9 +253,7 @@
 
         public virtual async Task MessageReceivedAsync(IDialogContext context,IAwaitable<IMessageActivity> argument)
         {
-            count54++;
             
-            //await context.PostAsync(count.ToString());
             var message = await argument;
             var ConversationId = message.Conversation.Id;
             var userId = message.From.Id;
@@ -216,7 +261,7 @@
             {
                 userId="1400582053320010";
             }
-            //await context.PostAsync(userId);
+            
             var Dirpath = Path.Combine(HttpRuntime.AppDomainAppPath,"images");
            
             var Output_File_Path = Path.Combine(Dirpath,ConversationId+"_"+".gif");
@@ -231,12 +276,12 @@
                 using (HttpClient httpClient = new HttpClient())
                 {
                     var attachmentUrl = message.Attachments[0].ContentUrl;
-                    await context.PostAsync(attachmentUrl);
-                    var attachmentData = await httpClient.GetByteArrayAsync(attachmentUrl);
-                    SaveFile(attachmentData,filepath);
+                   
+                    attachmentData = await httpClient.GetByteArrayAsync(attachmentUrl);
+                    //SaveFile(attachmentData,filepath);
                     int r = rnd.Next(mylist.Count);
-                    GhepHinhTuGif((string)mylist[r],(string)mycolor[r],Dirpath,ConversationId,demhinh);
-                    Create_Animated_GIF(ConversationId,demhinh);
+                    GhepHinhTuGif((string)mylist[r],(string)mycolor[r],Dirpath,ConversationId,demhinh,attachmentData);
+                    //Create_Animated_GIF(ConversationId,demhinh);
 
                     var replyMessage = context.MakeMessage();
                     replyMessage.Attachments=new List<Attachment>()
@@ -256,88 +301,90 @@
 
                 }
             }
-            //else
-            //{
+            else
+            {
+                var callbackmsg = message.Text;
+                if (count54 == 0)
+                {
+                    await context.PostAsync($"Kinh Đô mừng xuân Đinh Dậu!");
+                    await context.PostAsync($"Kinh Đô sẽ biến hoá bộ ảnh Tết xưa - Tết nay tặng bạn. Bạn gửi ảnh nha!");
+                    var fbimgURLObj = "https://graph.facebook.com/v2.6/"+userId+"?access_token=EAAaE4y2KvjEBABHmiY9A5MsyMb4lhqBU0arBCtIeEcny4fOY0fEZAZCNl5fh5BixPXiHQslDH8kxZAtsYoDFLPeWyjZBqiPdcXZCq252gHHA70Qogq9OhPGPZC88daWbPeVhyRgNpfSywoa8wEtPe3miT7IhSSdjcZBCQzZBsieVGwZDZD";
+                    HttpWebRequest request = WebRequest.Create(fbimgURLObj) as HttpWebRequest;
+                    using (HttpWebResponse response = request.GetResponse() as HttpWebResponse)
+                    {
 
-            //    var callbackmsg = message.Text;
-            //    var color = "red";
-            //    var index = mylist.FindIndex(a => a == callbackmsg);
-            //    if (mylist.Contains(callbackmsg))
-            //    {
-            //        if (yellow.Contains(callbackmsg))
-            //        {
-            //            color="yellow";
-            //        }
-            //        GhepHinhTuGif(callbackmsg,color,Dirpath,ConversationId);
-            //        Create_Animated_GIF(ConversationId);
+                        StreamReader reader = new StreamReader(response.GetResponseStream());
 
-            //        var replyMessage = context.MakeMessage();
-            //        replyMessage.Attachments=new List<Attachment>()
-            //         {
-            //            new Attachment()
-            //            {
-            //                ContentUrl = realServer + "/" + ConversationId+"_"+ ".gif",
-            //                ContentType = "image/gif",
-            //                Name = ConversationId+"_"+ ".gif"
-            //            }
-            //         };
-            //        await context.PostAsync(replyMessage);
-            //        //await context.PostAsync(loichuc[index]);
-            //        var replychon = context.MakeMessage();
-            //        replychon.AttachmentLayout=AttachmentLayoutTypes.Carousel;
-            //        replychon.Attachments=GetCardsAttachments();
-            //        await context.PostAsync(replychon);
-            //    }
-            //    else {
-            //        if ((count54>1)&&(callbackmsg!="facebook"))
-            //        {
-            //            await context.PostAsync($"Tết xưa hay Tết nay? Gửi ảnh và chọn chủ đề là có ngay ảnh xuân như ý.");
+                        string retVal = reader.ReadToEnd();
 
-            //        }
-            //        else
-            //        {
-            //            await context.PostAsync($"Kinh Đô mừng xuân Đinh Dậu!");
-            //            await context.PostAsync($"Kinh Đô sẽ biến hoá bộ ảnh Tết xưa - Tết nay tặng bạn. Bạn gửi ảnh nha!");
-
-            //            var fbimgURLObj = "https://graph.facebook.com/v2.6/"+userId+"?access_token=EAAaE4y2KvjEBABHmiY9A5MsyMb4lhqBU0arBCtIeEcny4fOY0fEZAZCNl5fh5BixPXiHQslDH8kxZAtsYoDFLPeWyjZBqiPdcXZCq252gHHA70Qogq9OhPGPZC88daWbPeVhyRgNpfSywoa8wEtPe3miT7IhSSdjcZBCQzZBsieVGwZDZD";
-            //            HttpWebRequest request = WebRequest.Create(fbimgURLObj) as HttpWebRequest;
-            //            using (HttpWebResponse response = request.GetResponse() as HttpWebResponse)
-            //            {
-
-            //                StreamReader reader = new StreamReader(response.GetResponseStream());
-
-            //                string retVal = reader.ReadToEnd();
-
-            //                var data = "http://media.baodautu.vn/Images/haiyen/2016/01/06/kdo.jpg";
-            //                if (retVal.Length > 10)
-            //                data = JObject.Parse(retVal)["profile_pic"].ToString();
-
-            //                getUrlImage(data,filepath);
-            //                int r = rnd.Next(mylist.Count);
-            //                GhepHinhTuGif((string)mylist[r],(string)mycolor[r],Dirpath,ConversationId);
-            //                Create_Animated_GIF(ConversationId);
-            //            }
-            //            var replyMessage = context.MakeMessage();
-            //            replyMessage.Attachments=new List<Attachment>()
-            //         {
-            //            new Attachment()
-            //            {
-            //                ContentUrl = realServer + "/" + ConversationId+"_"+ ".gif",
-            //                ContentType = "image/gif",
-            //                Name = ConversationId+"_"+ ".gif"
-            //            }
-            //         };
-            //            await context.PostAsync(replyMessage);
+                        var data = "http://media.baodautu.vn/Images/haiyen/2016/01/06/kdo.jpg";
+                        if (retVal.Length>10)
+                            data=JObject.Parse(retVal)["profile_pic"].ToString();
+                        var filepath = Path.Combine(Dirpath,ConversationId+"_"+demhinh.ToString()+".jpg");
+                        var dataimg = getUrlImage(data,filepath);
+                        int r = rnd.Next(mylist.Count);
+                        GhepHinhTuGif((string)mylist[r],(string)mycolor[r],Dirpath,ConversationId,demhinh,dataimg);
+                       
+                        //Create_Animated_GIF(ConversationId);
+                    }
+                    var replyMessage = context.MakeMessage();
+                    replyMessage.Attachments=new List<Attachment>()
+                     {
+                        new Attachment()
+                        {
+                           ContentUrl = realServer + "/" + ConversationId+"_"+demhinh.ToString()+  ".gif",
+                            ContentType = "image/gif",
+                            Name = ConversationId+"_"+ ".gif"
+                        }
+                     };
+                    await context.PostAsync(replyMessage);
+                    count54++;
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(callbackmsg))
+                    {
+                        await context.PostAsync($"Tết xưa hay Tết nay? Gửi ảnh và chọn chủ đề là có ngay ảnh xuân như ý.");
                         
-            //        }
-            //    }
-            //}
+                    }
+                    
+                }
+                
+                
+                if (mylist.Contains(callbackmsg))
+                {
+                    var color = "red";
+                    if (yellow.Contains(callbackmsg))
+                    {
+                        color="yellow";
+                    }
+                    GhepHinhTuGif(callbackmsg,color,Dirpath,ConversationId,demhinh,attachmentData);
+                    //Create_Animated_GIF(ConversationId);
 
+                    var replyMessage = context.MakeMessage();
+                    replyMessage.Attachments=new List<Attachment>()
+                     {
+                        new Attachment()
+                        {
+                            ContentUrl = realServer + "/" + ConversationId+"_"+demhinh.ToString()+  ".gif",
+                            ContentType = "image/gif",
+                            Name = ConversationId+"_"+ ".gif"
+                        }
+                     };
+                    await context.PostAsync(replyMessage);
+                    var index = mylist.FindIndex(a => a==callbackmsg);
+                    await context.PostAsync(loichuc[index]);
+                    var replychon = context.MakeMessage();
+                    replychon.AttachmentLayout=AttachmentLayoutTypes.Carousel;
+                    replychon.Attachments=GetCardsAttachments();
+                    await context.PostAsync(replychon);
+                }
+                
+            }
             context.Wait(this.MessageReceivedAsync);
-
         }
 
-        public static void getUrlImage(string url,string filepath)
+        public static byte[] getUrlImage(string url,string filepath)
         {
             WebResponse result = null;
             try
@@ -349,11 +396,13 @@
                 byte[] rBytes = br.ReadBytes(1000000);
                 br.Close();
                 result.Close();
-                SaveFile(rBytes,filepath);
+                return rBytes;
+                //SaveFile(rBytes,filepath);
             }
             catch (Exception c)
             {
                 //MessageBox.Show(c.Message);
+                return null;
             }
             finally
             {
